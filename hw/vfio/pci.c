@@ -2792,6 +2792,21 @@ static void vfio_unregister_req_notifier(VFIOPCIDevice *vdev)
     vdev->req_enabled = false;
 }
 
+static int vfio_pci_get_device(VFIOGroup *group, VFIOPCIDevice *vdev,
+                               Error **errp)
+{
+    char name[PATH_MAX], *p;
+
+    if (vdev->keepalive_token) {
+        snprintf(name, PATH_MAX, "%s keepalive_token=%s",
+                 vdev->vbasedev.name, vdev->keepalive_token);
+        p = name;
+    } else {
+        p = vdev->vbasedev.name;
+    }
+    return vfio_get_device(group, p, &vdev->vbasedev, errp);
+}
+
 static void vfio_realize(PCIDevice *pdev, Error **errp)
 {
     VFIOPCIDevice *vdev = VFIO_PCI(pdev);
@@ -2884,7 +2899,7 @@ static void vfio_realize(PCIDevice *pdev, Error **errp)
         goto error;
     }
 
-    ret = vfio_get_device(group, vdev->vbasedev.name, &vdev->vbasedev, errp);
+    ret = vfio_pci_get_device(group, vdev, errp);
     if (ret) {
         vfio_put_group(group);
         goto error;
@@ -3250,6 +3265,7 @@ static Property vfio_pci_dev_properties[] = {
                                    qdev_prop_nv_gpudirect_clique, uint8_t),
     DEFINE_PROP_OFF_AUTO_PCIBAR("x-msix-relocation", VFIOPCIDevice, msix_relo,
                                 OFF_AUTOPCIBAR_OFF),
+    DEFINE_PROP_STRING("keepalive-token", VFIOPCIDevice, keepalive_token),
     /*
      * TODO - support passed fds... is this necessary?
      * DEFINE_PROP_STRING("vfiofd", VFIOPCIDevice, vfiofd_name),
