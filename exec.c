@@ -69,6 +69,7 @@
 
 #include "qemu/pmem.h"
 
+#include "migration/qemu-file-types.h"
 #include "migration/vmstate.h"
 
 #include "qemu/range.h"
@@ -2811,6 +2812,44 @@ out_undo_keepalive:
 
 static bool keepalive_enabled;
 
+static int get_keepalive_enabled(QEMUFile *f, void *pv, size_t size,
+                                 const VMStateField *field)
+{
+    keepalive_enabled = qemu_get_byte(f);
+    return 0;
+}
+
+static int put_keepalive_enabled(QEMUFile *f, void *pv, size_t size,
+                                 const VMStateField *field, QJSON *vmdesc)
+{
+    qemu_put_byte(f, keepalive_enabled);
+    return 0;
+}
+
+static const VMStateInfo vmstate_info_keepalive_enabled = {
+    .name = "keepalive_enabled vmstate info",
+    .get = get_keepalive_enabled,
+    .put = put_keepalive_enabled,
+};
+
+static const VMStateDescription vmstate_keepalive_enabled = {
+    .name = "global keepalive state",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        {
+            .name         = "keepalive_enabled",
+            .version_id   = 0,
+            .field_exists = NULL,
+            .size         = 0,
+            .info         = &vmstate_info_keepalive_enabled,
+            .flags        = VMS_SINGLE,
+            .offset       = 0,
+        },
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 void qemu_set_keepalive(bool on, void *data, Error **errp)
 {
     if (keepalive_enabled == on) {
@@ -2844,6 +2883,7 @@ static QemuOptsList qemu_keepalive_opts = {
 void qemu_keepalive_init(void)
 {
     qemu_add_opts(&qemu_keepalive_opts);
+    vmstate_register(NULL, 0, &vmstate_keepalive_enabled, NULL);
 }
 
 
