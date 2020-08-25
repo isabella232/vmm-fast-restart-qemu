@@ -113,6 +113,7 @@
 #include "qapi/qmp/qerror.h"
 #include "sysemu/iothread.h"
 #include "qemu/guest-random.h"
+#include "exec/keepalive.h"
 
 #define MAX_VIRTIO_CONSOLES 1
 
@@ -4353,6 +4354,7 @@ void qemu_init(int argc, char **argv, char **envp)
 
     /* from here on runstate is RUN_STATE_PRELAUNCH */
     machine_run_board_init(current_machine);
+    qemu_keepalive_init();
 
     /*
      * TODO To drop support for deprecated bogus if=..., move
