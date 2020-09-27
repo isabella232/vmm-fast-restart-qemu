@@ -200,4 +200,7 @@ int vfio_spapr_create_window(VFIOContainer *container,
 int vfio_spapr_remove_window(VFIOContainer *container,
                              hwaddr offset_within_address_space);
 
+bool vfio_device_is_keepalive(VFIODevice *vdev);
+int vfio_set_keepalive(void *opaque, bool on, void *data);
+
 #endif /* HW_VFIO_VFIO_COMMON_H */
