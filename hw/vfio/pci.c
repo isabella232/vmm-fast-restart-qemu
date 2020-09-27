@@ -610,8 +610,10 @@ static void vfio_msix_enable(VFIOPCIDevice *vdev)
      * the physical device with no vectors enabled, but MSI-X enabled, just
      * like the guest view.
      */
-    vfio_msix_vector_do_use(&vdev->pdev, 0, NULL, NULL);
-    vfio_msix_vector_release(&vdev->pdev, 0);
+    if (!vfio_device_is_keepalive(&vdev->vbasedev)) {
+        vfio_msix_vector_do_use(&vdev->pdev, 0, NULL, NULL);
+        vfio_msix_vector_release(&vdev->pdev, 0);
+    }
 
     if (msix_set_vector_notifiers(&vdev->pdev, vfio_msix_vector_use,
                                   vfio_msix_vector_release, NULL)) {
@@ -928,6 +930,10 @@ static void vfio_pci_size_rom(VFIOPCIDevice *vdev)
                         vdev->vbasedev.name);
             error_printf("Proceeding anyway since user specified romfile\n");
         }
+        return;
+    }
+
+    if (vfio_device_is_keepalive(&vdev->vbasedev)) {
         return;
     }
 
@@ -2993,9 +2999,11 @@ static void vfio_realize(PCIDevice *pdev, Error **errp)
                                              vfio_intx_routing_notifier);
         vdev->irqchip_change_notifier.notify = vfio_irqchip_change;
         kvm_irqchip_add_change_notifier(&vdev->irqchip_change_notifier);
-        ret = vfio_intx_enable(vdev, errp);
-        if (ret) {
-            goto out_deregister;
+        if (!vfio_device_is_keepalive(&vdev->vbasedev)) {
+            ret = vfio_intx_enable(vdev, errp);
+            if (ret) {
+                goto out_deregister;
+            }
         }
     }
 
@@ -3100,6 +3108,10 @@ static void vfio_exitfn(PCIDevice *pdev)
 static void vfio_pci_reset(DeviceState *dev)
 {
     VFIOPCIDevice *vdev = VFIO_PCI(dev);
+
+    if (vfio_device_is_keepalive(&vdev->vbasedev)) {
+        return;
+    }
 
     trace_vfio_pci_reset(vdev->vbasedev.name);
 
